@@ -21,8 +21,8 @@ class NgramEvaluator:
         self.ngrams = self.model['ngrams']
         self.probabilities = self.model['probabilities']
         
-        # Load dữ liệu test
-        self.test_df = pd.read_csv(test_data_file, encoding='utf-8-sig')
+        # Load dữ liệu test (giới hạn 500 bài gần nhất để tránh timeout trên web)
+        self.test_df = pd.read_csv(test_data_file, encoding='utf-8-sig').tail(500)
     
     def calculate_perplexity(self):
         """Tính Perplexity - độ đo quan trọng nhất cho mô hình ngôn ngữ"""
@@ -56,6 +56,10 @@ class NgramEvaluator:
     
     def calculate_accuracy(self, top_k=5):
         """Tính độ chính xác trong việc dự đoán từ tiếp theo"""
+        # Unigram không có context nên không thể dự đoán từ tiếp theo
+        if self.n == 1:
+            return 0.0, 0, 0
+
         correct = 0
         total = 0
         

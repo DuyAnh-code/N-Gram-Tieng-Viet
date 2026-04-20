@@ -9,7 +9,7 @@ STOPWORDS = {
     'và', 'của', 'có', 'được', 'cho', 'từ', 'với', 'theo', 'trong', 'là',
     'một', 'này', 'đã', 'để', 'các', 'những', 'tại', 'còn', 'như', 'khi',
     'đó', 'nên', 'nếu', 'hoặc', 'thì', 'mà', 'rất', 'cũng', 'vào', 'ra',
-    'về', 'lại', 'được', 'lên', 'bị', 'sẽ', 'đang', 'bởi', 'nữa', 'hay',
+    'về', 'lại', 'lên', 'bị', 'sẽ', 'đang', 'bởi', 'nữa', 'hay',
     'nhiều', 'hơn', 'cả', 'sau', 'trước', 'giữa', 'do', 'nhưng', 'vì'
 }
 
@@ -30,8 +30,9 @@ def preprocess_text(text, remove_stopwords=False, min_word_length=2):
     # Loại bỏ khoảng trắng thừa
     text = re.sub(r"\s+", " ", text).strip()
     
-    # Tách từ tiếng Việt
-    tokens = word_tokenize(text, format="text").split()
+    # Tách từ tiếng Việt cấp độ Từ (Word-level), BẮT BUỘC giữ dấu _ để tránh lỗi khoảng trắng khi tính N-gram
+    tokenized = word_tokenize(text, format="text")
+    tokens = tokenized.split()
     
     # Lọc stopwords nếu được yêu cầu
     if remove_stopwords:

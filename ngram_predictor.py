@@ -20,6 +20,10 @@ class NgramPredictor:
     
     def _build_context_dict(self):
         """Xây dựng dictionary context -> next_word"""
+        # Unigram không có context, không xây dựng context_dict
+        if self.n == 1:
+            return
+
         for ngram_str, count in self.ngrams.items():
             words = ngram_str.split()
             if len(words) == self.n:
@@ -42,6 +46,12 @@ class NgramPredictor:
         Returns:
             List các (word, probability) được sắp xếp theo xác suất
         """
+        # Unigram: trả về top-k từ phổ biến nhất (không phụ thuộc context)
+        if self.n == 1:
+            top_unigrams = sorted(self.ngrams.items(), key=lambda x: x[1], reverse=True)[:top_k]
+            total = sum(self.ngrams.values())
+            return [(w, c / total) for w, c in top_unigrams]
+
         context = context.strip().lower()
         
         if context not in self.context_dict:

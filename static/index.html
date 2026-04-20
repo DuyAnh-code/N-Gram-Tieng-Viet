@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VN N-gram Studio — Mô hình Ngôn ngữ Tiếng Việt</title>
+    <meta name="description" content="Hệ thống xây dựng và đánh giá mô hình N-gram tiếng Việt chuyên nghiệp.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-container">
+
+    <!-- ══════════════ SIDEBAR ══════════════ -->
+    <nav class="sidebar">
+        <div class="logo">
+            <div class="logo-icon"><i class="fa-solid fa-brain"></i></div>
+            <div class="logo-text">
+                <span>VN N-gram</span>
+                <span>Studio v2.0</span>
+            </div>
+        </div>
+        <div class="logo-divider"></div>
+
+        <div class="nav-section-label">Tổng quan</div>
+        <ul class="nav-links">
+            <li class="active" data-tab="dashboard" id="nav-dashboard">
+                <div class="nav-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                Dashboard
+            </li>
+        </ul>
+
+        <div class="nav-section-label">Pipeline</div>
+        <ul class="nav-links">
+            <li data-tab="crawler" id="nav-crawler">
+                <div class="nav-icon"><i class="fa-solid fa-spider"></i></div>
+                Thu thập dữ liệu
+                <span class="nav-badge">API</span>
+            </li>
+            <li data-tab="preprocess" id="nav-preprocess">
+                <div class="nav-icon"><i class="fa-solid fa-filter"></i></div>
+                Tiền xử lý
+            </li>
+            <li data-tab="ngram" id="nav-ngram">
+                <div class="nav-icon"><i class="fa-solid fa-network-wired"></i></div>
+                Mô hình N-gram
+            </li>
+        </ul>
+
+        <div class="nav-section-label">Phân tích</div>
+        <ul class="nav-links">
+            <li data-tab="predict" id="nav-predict">
+                <div class="nav-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                Dự đoán từ
+            </li>
+            <li data-tab="evaluate" id="nav-evaluate">
+                <div class="nav-icon"><i class="fa-solid fa-flask"></i></div>
+                Đánh giá mô hình
+            </li>
+            <li data-tab="visualize" id="nav-visualize">
+                <div class="nav-icon"><i class="fa-solid fa-chart-area"></i></div>
+                Trực quan hóa
+            </li>
+        </ul>
+
+        <div style="flex:1"></div>
+        <div class="sidebar-footer">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=5865F2&color=fff&bold=true" alt="Avatar" class="sidebar-avatar">
+            <div class="sidebar-footer-info">
+                <span>Admin</span>
+                <span>● Đang trực tuyến</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ══════════════ MAIN ══════════════ -->
+    <main class="content">
+
+        <!-- Header -->
+        <header>
+            <div class="header-left">
+                <div class="breadcrumb">VN N-gram Studio / <span id="breadcrumb-page">Dashboard</span></div>
+                <h1 id="page-title">Tổng quan hệ thống</h1>
+            </div>
+            <div class="header-right">
+                <div class="status-pill">
+                    <div class="status-dot"></div>
+                    Server Online
+                </div>
+                <button class="header-btn" title="Làm mới dữ liệu" onclick="loadDashboardStats()">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <img src="https://ui-avatars.com/api/?name=Admin&background=5865F2&color=fff&bold=true" alt="User" class="user-avatar">
+            </div>
+        </header>
+
+        <div class="content-inner">
+
+            <!-- ═══════ DASHBOARD ═══════ -->
+            <section id="dashboard" class="tab-pane active fade-in">
+
+                <div class="stats-grid">
+                    <div class="stat-card glass c1">
+                        <div class="stat-card-top">
+                            <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+                            <span class="stat-trend">Raw</span>
+                        </div>
+                        <div>
+                            <h3>Tổng số bài báo</h3>
+                            <h2 id="dash-total-articles">—</h2>
+                        </div>
+                    </div>
+                    <div class="stat-card glass c2">
+                        <div class="stat-card-top">
+                            <div class="stat-icon"><i class="fa-solid fa-file-lines"></i></div>
+                            <span class="stat-trend">Processed</span>
+                        </div>
+                        <div>
+                            <h3>Bài báo đã xử lý</h3>
+                            <h2 id="dash-processed-articles">—</h2>
+                        </div>
+                    </div>
+                    <div class="stat-card glass c3">
+                        <div class="stat-card-top">
+                            <div class="stat-icon"><i class="fa-solid fa-spell-check"></i></div>
+                            <span class="stat-trend">Vocab</span>
+                        </div>
+                        <div>
+                            <h3>Từ vựng (Unigram)</h3>
+                            <h2 id="dash-vocab-size">—</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon blue"><i class="fa-solid fa-cubes"></i></div>
+                            <h2>Danh sách mô hình N-gram <small>Trạng thái hiện tại</small></h2>
+                        </div>
+                        <button class="btn ghost" onclick="loadDashboardStats()">
+                            <i class="fa-solid fa-arrows-rotate"></i> Cập nhật
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="models-table">
+                            <thead>
+                                <tr>
+                                    <th>Mô hình</th>
+                                    <th>Trạng thái</th>
+                                    <th>Kích thước</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="4" class="text-center"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ═══════ CRAWLER ═══════ -->
+            <section id="crawler" class="tab-pane hidden fade-in">
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon cyan"><i class="fa-solid fa-spider"></i></div>
+                            <h2>Cấu hình Crawler <small>Thu thập dữ liệu báo chí</small></h2>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Crawler sẽ tự động thu thập bài báo từ các nguồn: Tuổi Trẻ, Thanh Niên, VnExpress, Dân Trí, Vietnamnet, NLD. Mỗi trang tương đương khoảng 10–20 bài báo.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Số trang mỗi chuyên mục</label>
+                        <input type="number" id="crawl-limit" value="1" min="1" max="20" style="max-width:160px">
+                    </div>
+
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button id="btn-start-crawl" class="btn primary">
+                            <i class="fa-solid fa-play"></i> Bắt đầu thu thập
+                        </button>
+                        <button id="btn-stop-crawl" class="btn danger hidden">
+                            <i class="fa-solid fa-stop"></i> Dừng lại
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass panel mt-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon green"><i class="fa-solid fa-terminal"></i></div>
+                            <h2>Tiến trình</h2>
+                        </div>
+                        <button class="btn ghost" onclick="clearLog('crawl-logs')">
+                            <i class="fa-solid fa-trash"></i> Xóa log
+                        </button>
+                    </div>
+
+                    <div class="progress-wrapper">
+                        <div class="progress-header">
+                            <span class="progress-label">Tiến độ thu thập</span>
+                            <span class="progress-pct" id="crawl-pct">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar" id="crawl-progress"></div>
+                        </div>
+                    </div>
+
+                    <div class="status-msg hidden" id="crawl-msg">Đang chờ lệnh...</div>
+                    <div class="log-console" id="crawl-logs"></div>
+                </div>
+
+            </section>
+
+            <!-- ═══════ PREPROCESS ═══════ -->
+            <section id="preprocess" class="tab-pane hidden fade-in">
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon yellow"><i class="fa-solid fa-filter"></i></div>
+                            <h2>Cấu hình tiền xử lý <small>Làm sạch & chuẩn hóa</small></h2>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Tiền xử lý bao gồm: loại bỏ ký tự đặc biệt, chuẩn hóa Unicode, tách từ tiếng Việt (tokenize), và tùy chọn loại bỏ stopwords.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tùy chọn xử lý</label>
+                        <label class="check-group">
+                            <input type="checkbox" id="prep-stopwords">
+                            <span class="check-box"></span>
+                            <span class="check-label">Loại bỏ Stopwords (từ dừng)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Vùng dữ liệu cần xử lý</label>
+                        <select id="prep-field">
+                            <option value="1">Chỉ Nội dung bài báo</option>
+                            <option value="2">Tiêu đề + Nội dung</option>
+                            <option value="3">Mô tả + Nội dung</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button id="btn-start-prep" class="btn primary">
+                            <i class="fa-solid fa-play"></i> Bắt đầu xử lý
+                        </button>
+                        <button id="btn-stop-prep" class="btn danger hidden">
+                            <i class="fa-solid fa-stop"></i> Dừng lại
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass panel mt-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon green"><i class="fa-solid fa-terminal"></i></div>
+                            <h2>Tiến trình</h2>
+                        </div>
+                        <button class="btn ghost" onclick="clearLog('prep-logs')">
+                            <i class="fa-solid fa-trash"></i> Xóa log
+                        </button>
+                    </div>
+
+                    <div class="progress-wrapper">
+                        <div class="progress-header">
+                            <span class="progress-label">Tiến độ xử lý</span>
+                            <span class="progress-pct" id="prep-pct">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar" id="prep-progress"></div>
+                        </div>
+                    </div>
+
+                    <div class="status-msg hidden" id="prep-msg">Đang chờ lệnh...</div>
+                    <div class="log-console" id="prep-logs"></div>
+                </div>
+
+            </section>
+
+            <!-- ═══════ N-GRAM BUILDER ═══════ -->
+            <section id="ngram" class="tab-pane hidden fade-in">
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon blue"><i class="fa-solid fa-network-wired"></i></div>
+                            <h2>Tạo mô hình N-gram <small>Từ 1-gram đến 4-gram</small></h2>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Chọn các mô hình cần tạo. File kết quả sẽ được lưu tại thư mục <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">dataset/</code>.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Chọn loại mô hình</label>
+                        <div class="ngram-options-grid">
+                            <label class="ngram-pill-label">
+                                <input type="checkbox" class="ngram-check" value="1" checked>
+                                <i class="fa-solid fa-1"></i> Unigram
+                            </label>
+                            <label class="ngram-pill-label">
+                                <input type="checkbox" class="ngram-check" value="2" checked>
+                                <i class="fa-solid fa-2"></i> Bigram
+                            </label>
+                            <label class="ngram-pill-label">
+                                <input type="checkbox" class="ngram-check" value="3" checked>
+                                <i class="fa-solid fa-3"></i> Trigram
+                            </label>
+                            <label class="ngram-pill-label">
+                                <input type="checkbox" class="ngram-check" value="4">
+                                <i class="fa-solid fa-4"></i> 4-gram
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button id="btn-start-build" class="btn primary">
+                            <i class="fa-solid fa-play"></i> Tạo N-gram
+                        </button>
+                        <button id="btn-stop-build" class="btn danger hidden">
+                            <i class="fa-solid fa-stop"></i> Dừng lại
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass panel mt-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon green"><i class="fa-solid fa-terminal"></i></div>
+                            <h2>Tiến trình xây dựng</h2>
+                        </div>
+                        <button class="btn ghost" onclick="clearLog('build-logs')">
+                            <i class="fa-solid fa-trash"></i> Xóa log
+                        </button>
+                    </div>
+
+                    <div class="progress-wrapper">
+                        <div class="progress-header">
+                            <span class="progress-label">Tiến độ xây dựng</span>
+                            <span class="progress-pct" id="build-pct">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-bar" id="build-progress"></div>
+                        </div>
+                    </div>
+
+                    <div class="status-msg hidden" id="build-msg">Đang chờ lệnh...</div>
+                    <div class="log-console" id="build-logs"></div>
+                </div>
+
+                <div class="glass panel mt-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon cyan"><i class="fa-solid fa-fire"></i></div>
+                            <h2>Top N-gram phổ biến nhất</h2>
+                        </div>
+                        <div class="tabs-control">
+                            <button class="tab-btn active" data-n="1">1-gram</button>
+                            <button class="tab-btn" data-n="2">2-gram</button>
+                            <button class="tab-btn" data-n="3">3-gram</button>
+                            <button class="tab-btn" data-n="4">4-gram</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="top-ngram-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>N-gram</th>
+                                    <th>Tần suất</th>
+                                    <th>Xác suất</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="4" class="text-center">Chưa có dữ liệu</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ═══════ PREDICTOR ═══════ -->
+            <section id="predict" class="tab-pane hidden fade-in">
+                <div class="split-layout">
+
+                    <!-- Gợi ý từ tiếp theo -->
+                    <div class="glass panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <div class="panel-title-icon blue"><i class="fa-solid fa-keyboard"></i></div>
+                                <h2>Gợi ý từ tiếp theo</h2>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Ngữ cảnh (context)</label>
+                            <div class="predict-input-wrapper">
+                                <input type="text" id="pred-context"
+                                    placeholder="Nhập ngữ cảnh, ví dụ: thi đại học..."
+                                    autocomplete="off">
+                                <span class="predict-n-badge" id="pred-n-badge">Bigram</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Dùng mô hình</label>
+                            <select id="pred-n" style="max-width:160px">
+                                <option value="2">Bigram</option>
+                                <option value="3" selected>Trigram</option>
+                                <option value="4">4-gram</option>
+                            </select>
+                        </div>
+
+                        <label class="form-label mb-1">Từ gợi ý</label>
+                        <div id="pred-results">
+                            <span style="color:var(--text-muted);font-size:0.85rem">Nhập văn bản để xem gợi ý...</span>
+                        </div>
+                    </div>
+
+                    <!-- Sinh văn bản -->
+                    <div class="glass panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <div class="panel-title-icon cyan"><i class="fa-solid fa-robot"></i></div>
+                                <h2>Sinh văn bản tự động</h2>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Từ / cụm từ bắt đầu</label>
+                            <input type="text" id="gen-seed" value="chính phủ">
+                        </div>
+
+                        <div class="form-group row-group">
+                            <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                                <label class="form-label">Độ dài (số từ)</label>
+                                <input type="number" id="gen-length" value="15" min="5" max="100" style="max-width:120px">
+                            </div>
+                        </div>
+
+                        <button id="btn-generate" class="btn primary mb-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Sinh văn bản
+                        </button>
+
+                        <div class="generated-box" id="gen-output">
+                            <span style="color:var(--text-muted)">Kết quả sẽ hiển thị tại đây...</span>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ═══════ EVALUATE ═══════ -->
+            <section id="evaluate" class="tab-pane hidden fade-in">
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon yellow"><i class="fa-solid fa-flask-vial"></i></div>
+                            <h2>Đánh giá mô hình N-gram</h2>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Hệ thống chạy qua file test (<code style="color:var(--accent);font-family:'JetBrains Mono',monospace">news_processed.csv</code>) để tính Perplexity và đo lường độ chính xác dự đoán từ kế tiếp của từng mô hình.
+                    </div>
+
+                    <button id="btn-run-eval" class="btn primary">
+                        <i class="fa-solid fa-calculator"></i> Bắt đầu đánh giá
+                    </button>
+                </div>
+
+                <div class="glass panel mt-2">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon blue"><i class="fa-solid fa-table"></i></div>
+                            <h2>Kết quả đánh giá</h2>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="eval-table">
+                            <thead>
+                                <tr>
+                                    <th>Mô hình</th>
+                                    <th>Perplexity ↓</th>
+                                    <th>Accuracy@1 (%)</th>
+                                    <th>Accuracy@5 (%)</th>
+                                    <th>Coverage (%)</th>
+                                    <th>Số N-gram</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="6" class="text-center">Chưa có dữ liệu — Nhấn đánh giá để bắt đầu</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ═══════ VISUALIZE ═══════ -->
+            <section id="visualize" class="tab-pane hidden fade-in">
+
+                <div class="glass panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <div class="panel-title-icon cyan"><i class="fa-solid fa-palette"></i></div>
+                            <h2>Trực quan hóa dữ liệu &amp; N-gram</h2>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Vẽ biểu đồ phân phối từ vựng và so sánh tương quan giữa các mô hình N-gram. Quá trình có thể mất từ 5 – 15 giây.
+                    </div>
+
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <button id="btn-run-vis" class="btn primary">
+                            <i class="fa-solid fa-palette"></i> Tạo biểu đồ mới
+                        </button>
+                        <p class="hidden" id="vis-msg" style="margin:0"></p>
+                    </div>
+                </div>
+
+                <div id="vis-images" style="display:none" class="mt-2">
+                    <div style="display:flex;flex-direction:column;gap:1.5rem">
+                        <div class="vis-image-card">
+                            <div class="vis-image-label">
+                                <i class="fa-solid fa-chart-bar"></i> Biểu đồ So sánh Mô hình
+                            </div>
+                            <img id="img-compare" src="" alt="So sánh mô hình">
+                        </div>
+                        <div class="vis-image-card">
+                            <div class="vis-image-label">
+                                <i class="fa-solid fa-chart-simple"></i> Phân phối Từ vựng
+                            </div>
+                            <img id="img-vocab" src="" alt="Phân phối từ vựng">
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+        </div><!-- /content-inner -->
+    </main>
+</div><!-- /app-container -->
+
+<script src="/js/app.js"></script>
+</body>
+</html>

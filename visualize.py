@@ -60,7 +60,7 @@ def create_model_comparison_chart():
     
     # Tạo biểu đồ với 2 subplot
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
-    fig.suptitle('📊 SO SÁNH HIỆU SUẤT CÁC MÔ HÌNH N-GRAM', 
+    fig.suptitle('SO SÁNH HIỆU SUẤT CÁC MÔ HÌNH N-GRAM', 
                  fontsize=18, fontweight='bold', y=0.98)
     
     # Subplot 1: Kích thước từ vựng
@@ -138,13 +138,13 @@ def create_vocabulary_analysis_chart():
     fig = plt.figure(figsize=(18, 8))
     gs = fig.add_gridspec(2, 2, height_ratios=[1.2, 1], hspace=0.3, wspace=0.3)
     
-    fig.suptitle('📊 PHÂN TÍCH TỪ VỰNG VÀ N-GRAM PHỔ BIẾN', 
+    fig.suptitle('PHÂN TÍCH TỪ VỰNG VÀ N-GRAM PHỔ BIẾN', 
                  fontsize=18, fontweight='bold', y=0.98)
     
     # Subplot 1: Top 20 từ phổ biến nhất (chiếm 2 cột)
     ax1 = fig.add_subplot(gs[0, :])
     top_words = words_freq.most_common(20)
-    words = [w for w, _ in top_words]
+    words = [str(w).replace('_', ' ') for w, _ in top_words]
     counts = [c for _, c in top_words]
     
     colors_gradient = plt.cm.viridis(range(len(words)))
@@ -183,22 +183,7 @@ def create_vocabulary_analysis_chart():
         bigrams = bigram_model.get('ngrams', {})
         top_bigrams = sorted(bigrams.items(), key=lambda x: x[1], reverse=True)[:10]
         
-        # Sửa lỗi: bigram key có thể là string hoặc tuple
-        bigram_labels = []
-        for k, _ in top_bigrams:
-            try:
-                # Thử parse nếu là string
-                if isinstance(k, str):
-                    parsed = eval(k)
-                    if isinstance(parsed, tuple):
-                        bigram_labels.append(' '.join(parsed))
-                    else:
-                        bigram_labels.append(str(parsed))
-                else:
-                    bigram_labels.append(' '.join(k))
-            except:
-                # Nếu lỗi thì lấy key trực tiếp
-                bigram_labels.append(str(k).replace("('", "").replace("')", "").replace("', '", " "))
+        bigram_labels = [k.replace('_', ' ') for k, _ in top_bigrams]
         
         bigram_counts = [v for _, v in top_bigrams]
         
@@ -239,7 +224,7 @@ def create_vocabulary_analysis_chart():
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
     
     plt.tight_layout(rect=[0, 0.06, 1, 0.96])
-    save_path = "dataset/vocabulary_analysis_detailed.png"
+    save_path = "dataset/vocabulary_analysis.png"
     plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n✅ Đã lưu vào {save_path}")
     plt.close()
