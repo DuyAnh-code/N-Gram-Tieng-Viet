@@ -7,6 +7,7 @@ import os
 import json
 import gzip
 import pickle
+import random
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional
@@ -15,17 +16,37 @@ import sys
 
 # Cấu hình crawler nâng cao
 CONFIG = {
-    "max_workers": 5,
-    "timeout": 15,  # Tăng timeout lên 15s
-    "delay_between_requests": 0.5,  # Giảm delay để nhanh hơn
+    "max_workers": 3,          # Giảm xuống 3 để tránh bị detect là bot
+    "timeout": 15,
+    "delay_min": 0.5,          # Delay tối thiểu giữa các request (giây)
+    "delay_max": 1.5,          # Delay tối đa — random trong khoảng này
+    # Giữ tên cũ để tương thích ngược
+    "delay_between_requests": 0.5,
+    "backoff_factor": 2.0,     # Nhân delay x2 mỗi lần retry khi bị chặn
     "checkpoint_interval": 50,
     "enable_compression": True,
-    "max_retries": 3,  # Tăng lên 3 retry
-    "max_links_per_category": 1000,  # TĂNG LÊN 1000 links/chủ đề
+    "max_retries": 3,
+    "max_links_per_category": 1000,
+    # ── Pool User-Agent đa dạng (Chrome, Firefox, Edge, Safari, Mobile) ──
     "user_agents": [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        # Chrome Windows
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        # Firefox Windows
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        # Chrome Mac
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        # Safari Mac
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+        # Edge
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
+        # Chrome Android (Mobile)
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.6367.82 Mobile Safari/537.36',
+        # Firefox Linux
+        'Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0',
+        # Opera
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OPR/110.0.0.0',
     ]
 }
 
@@ -233,29 +254,54 @@ class CrawlerCore:
         self.success_count = 0
         self.fail_count = 0
         
-    def get_headers(self):
-        """Random User-Agent để tránh bị chặn"""
-        import random
-        return {
-            'User-Agent': random.choice(CONFIG['user_agents']),
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8',
+    def get_headers(self, referer: str = None):
+        """Tạo headers giống browser thật: random UA + Referer + encoding đầy đủ"""
+        ua = random.choice(CONFIG['user_agents'])
+        headers = {
+            'User-Agent': ua,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none' if not referer else 'same-origin',
+            'DNT': '1',
         }
+        # Thêm Referer nếu có (giả lập người dùng click từ trang chủ)
+        if referer:
+            headers['Referer'] = referer
+        return headers
+
+    def _random_delay(self, multiplier: float = 1.0):
+        """Delay ngẫu nhiên trong khoảng [delay_min, delay_max] để tránh pattern cố định"""
+        delay = random.uniform(CONFIG['delay_min'], CONFIG['delay_max']) * multiplier
+        time.sleep(delay)
     
-    def get_article_links(self, category_url: str, max_pages: int = 50) -> List[str]:
-        """Lấy links với SMART PAGINATION và FLEXIBLE SELECTORS"""
+    def get_article_links(self, category_url: str, max_pages: int = 50,
+                          stop_event=None) -> List[str]:
+        """Lấy links với SMART PAGINATION và FLEXIBLE SELECTORS.
+        stop_event: threading.Event — nếu được set thì dừng ngay lập tức.
+        """
         all_links = set()  # Dùng set để tự động loại trùng
         consecutive_failures = 0
         max_consecutive_failures = 3
-        
+
         print(f"   🎯 Mục tiêu: {CONFIG['max_links_per_category']} links")
-        
+
         for page in range(1, max_pages + 1):
+            # DỪNG ngay nếu nhận lệnh stop từ UI
+            if stop_event is not None and stop_event.is_set():
+                print(f"   🛑 Dừng lấy link theo lệnh người dùng (trang {page})")
+                break
+
             # DỪNG nếu đủ links
             if len(all_links) >= CONFIG['max_links_per_category']:
                 print(f"   ✅ Đã đủ {CONFIG['max_links_per_category']} links!")
                 break
-            
+
             # DỪNG nếu liên tục thất bại
             if consecutive_failures >= max_consecutive_failures:
                 print(f"   ⛔ Dừng sau {consecutive_failures} lần thất bại liên tiếp")
@@ -271,21 +317,42 @@ class CrawlerCore:
                 if page <= 5 or page % 10 == 0:  # In log định kỳ
                     print(f"   📄 Trang {page}: {url[:80]}...")
                 
-                response = requests.get(url, headers=self.get_headers(), timeout=CONFIG['timeout'])
-                
+                # Dùng Referer = base_url để giả lập click từ trang chủ nguồn
+                base_url_ref = self.source.get('base_url', '')
+                response = requests.get(
+                    url,
+                    headers=self.get_headers(referer=base_url_ref),
+                    timeout=CONFIG['timeout']
+                )
+
+                # Xử lý rate-limit: 429 → chờ lâu hơn rồi thử lại
+                if response.status_code == 429:
+                    wait = random.uniform(10, 20)
+                    print(f"   🚦 Bị rate-limit (429) trang {page}, chờ {wait:.0f}s...")
+                    time.sleep(wait)
+                    consecutive_failures += 1
+                    continue
+
+                if response.status_code == 503:
+                    wait = random.uniform(5, 10)
+                    print(f"   🚦 Server quá tải (503) trang {page}, chờ {wait:.0f}s...")
+                    time.sleep(wait)
+                    consecutive_failures += 1
+                    continue
+
                 if response.status_code != 200:
                     print(f"   ⚠️ HTTP {response.status_code} - Trang {page}")
                     consecutive_failures += 1
                     if page > 5:
                         break
                     continue
-                
+
                 response.encoding = 'utf-8'
                 soup = BeautifulSoup(response.text, "html.parser")
-                
+
                 # THỬ TẤT CẢ SELECTORS cho đến khi có kết quả
                 page_links = self._extract_links_flexible(soup, category_url)
-                
+
                 if not page_links:
                     consecutive_failures += 1
                     if page <= 5:
@@ -293,17 +360,17 @@ class CrawlerCore:
                     if page > 3:
                         break
                     continue
-                
+
                 # THÀNH CÔNG - reset failure counter
                 consecutive_failures = 0
                 new_links = [link for link in page_links if link not in all_links]
                 all_links.update(new_links)
-                
+
                 if page <= 10 or page % 10 == 0:
                     print(f"   ✅ Trang {page}: +{len(new_links)} links (tổng: {len(all_links)})")
-                
-                # Delay
-                time.sleep(CONFIG['delay_between_requests'])
+
+                # Delay ngẫu nhiên thay vì cố định
+                self._random_delay()
                 
             except requests.Timeout:
                 print(f"   ⏱️ Timeout trang {page}")
@@ -384,27 +451,59 @@ class CrawlerCore:
         return not any(pattern in url.lower() for pattern in invalid_patterns)
     
     def crawl_article(self, url: str) -> Optional[Dict]:
-        """Crawl một bài báo với FLEXIBLE SELECTORS"""
+        """Crawl một bài báo với FLEXIBLE SELECTORS + exponential backoff khi bị chặn"""
+        # Lấy domain làm Referer (giả lập click từ trang danh sách)
+        base_url_ref = self.source.get('base_url', '')
+
         for attempt in range(CONFIG['max_retries']):
             try:
-                response = requests.get(url, headers=self.get_headers(), timeout=CONFIG['timeout'])
+                # Delay ngẫu nhiên nhỏ trước mỗi request để tránh pattern
+                if attempt > 0:
+                    # Exponential backoff: 2^attempt * random(1, 2) giây
+                    backoff = (CONFIG['backoff_factor'] ** attempt) * random.uniform(1.0, 2.0)
+                    time.sleep(backoff)
+
+                response = requests.get(
+                    url,
+                    headers=self.get_headers(referer=base_url_ref),
+                    timeout=CONFIG['timeout']
+                )
+
+                # Bị rate-limit → chờ lâu rồi retry
+                if response.status_code == 429:
+                    wait = random.uniform(15, 30)
+                    time.sleep(wait)
+                    continue
+
+                # Server quá tải → chờ vừa rồi retry
+                if response.status_code == 503:
+                    wait = random.uniform(5, 12)
+                    time.sleep(wait)
+                    continue
+
+                # Bị chuyển hướng về trang lỗi/captcha
+                if response.status_code in (403, 401):
+                    with self.lock:
+                        self.fail_count += 1
+                    return None
+
                 response.encoding = 'utf-8'
                 soup = BeautifulSoup(response.text, "html.parser")
-                
+
                 # Lấy dữ liệu với NHIỀU SELECTOR
                 title = self._extract_text(soup, self.source['selectors']['title'])
                 description = self._extract_text(soup, self.source['selectors']['description'])
                 content = self._extract_content(soup, self.source['selectors']['content'])
                 category = self._extract_category(soup, self.source['selectors']['category'])
                 published_time = self._extract_text(soup, self.source['selectors']['time'])
-                
+
                 # Validate
                 if not title or not content or len(content) < 100:
                     return None
-                
+
                 with self.lock:
                     self.success_count += 1
-                
+
                 return {
                     "title": title,
                     "description": description,
@@ -415,14 +514,20 @@ class CrawlerCore:
                     "url": url,
                     "crawled_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
-                
+
+            except requests.Timeout:
+                # Timeout không cần backoff dài, thử lại nhanh
+                if attempt == CONFIG['max_retries'] - 1:
+                    with self.lock:
+                        self.fail_count += 1
+                    return None
+
             except Exception as e:
                 if attempt == CONFIG['max_retries'] - 1:
                     with self.lock:
                         self.fail_count += 1
                     return None
-                time.sleep(1)
-        
+
         return None
     
     def _extract_text(self, soup, selectors) -> str:
